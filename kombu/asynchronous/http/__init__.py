@@ -1,6 +1,7 @@
 from __future__ import absolute_import, unicode_literals
 
-from kombu.asynchronous import get_event_loop
+from kombu.asynchronous import get_event_loop, set_event_loop
+from kombu.asynchronous.hub import Hub
 
 from .base import Request, Headers, Response
 
@@ -17,7 +18,16 @@ def get_client(hub=None, **kwargs):
     """Get or create HTTP client bound to the current event loop."""
     hub = hub or get_event_loop()
     try:
+        if not hub:
+            hub = Hub()
+            client = hub._current_http_client = Client(hub, **kwargs)
+            set_event_loop(hub)
+
         return hub._current_http_client
     except AttributeError:
+        if not hub:
+            hub = Hub()
+
         client = hub._current_http_client = Client(hub, **kwargs)
-        return client
+        set_event_loop(hub)
+        return hub._current_http_client
